@@ -66,6 +66,7 @@ class JSONCommandProtocol(LineReceiver):
         raise NotImplementedError()
 
 
+"""
 @implementer(IHandshakeListener)
 class SyncClientProtocol(JSONCommandProtocol):
     def __init__(self, client):
@@ -380,7 +381,7 @@ class SyncClientProtocol(JSONCommandProtocol):
         self._connVersionNumberTLS = self._encryptedConnectionTLS.get_protocol_version()
         self._connVersionStringTLS = self._encryptedConnectionTLS.get_protocol_version_name()
         self._cipherNameTLS = self._encryptedConnectionTLS.get_cipher_name()
-    
+
         if self._connVersionNumberTLS == 771:
             self._connVersionNumberTLS = '1.2'
         elif self._connVersionNumberTLS == 772:
@@ -393,7 +394,7 @@ class SyncClientProtocol(JSONCommandProtocol):
                                     'cipher': self._cipherNameTLS})
 
         self.sendHello()
-
+"""
 
 class SyncServerProtocol(JSONCommandProtocol):
     def __init__(self, factory):
@@ -715,7 +716,6 @@ class SyncServerProtocol(JSONCommandProtocol):
 
 
 class PingService(object):
-
     def __init__(self):
         self._rtt = 0
         self._fd = 0
