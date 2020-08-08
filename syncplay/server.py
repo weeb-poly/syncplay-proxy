@@ -265,18 +265,18 @@ class StatsRecorder(object):
     def __init__(self, dbHandle, roomManager):
         self._dbHandle = dbHandle
         self._roomManagerHandle = roomManager
-        
+
     def startRecorder(self, delay):
         try:
             self._dbHandle.connect()
             reactor.callLater(delay, self._scheduleClientSnapshot)
         except:
             print("--- Error in initializing the stats database. Server Stats not enabled. ---")
-    
+
     def _scheduleClientSnapshot(self):
         self._clientSnapshotTimer = task.LoopingCall(self._runClientSnapshot)
-        self._clientSnapshotTimer.start(constants.SERVER_STATS_SNAPSHOT_INTERVAL)    
-    
+        self._clientSnapshotTimer.start(constants.SERVER_STATS_SNAPSHOT_INTERVAL)
+
     def _runClientSnapshot(self):
         try:
             snapshotTime = int(time.time())
@@ -368,7 +368,7 @@ class RoomManager(object):
         while username.lower() in allnames:
             username += '_'
         return username
-    
+
     def exportRooms(self):
         return self._rooms
 
