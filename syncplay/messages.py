@@ -39,10 +39,10 @@ def getMissingStrings():
         if lang != "en" and lang != "CURRENT":
             for message in messages["en"]:
                 if message not in messages[lang]:
-                    missingStrings = missingStrings + "({}) Missing: {}\n".format(lang, message)
+                    missingStrings = missingStrings + f"({lang}) Missing: {message}\n"
             for message in messages[lang]:
                 if message not in messages["en"]:
-                    missingStrings = missingStrings + "({}) Unused: {}\n".format(lang, message)
+                    missingStrings = missingStrings + f"({lang}) Unused: {message}\n"
 
     return missingStrings
 
@@ -86,6 +86,6 @@ def getMessage(type_, locale=None):
     if type_ in messages["en"]:
         return str(messages["en"][type_])
     else:
-        print("WARNING: Cannot find message '{}'!".format(type_))
+        print(f"WARNING: Cannot find message '{type_}'!")
         #return "!{}".format(type_)  # TODO: Remove
         raise KeyError(type_)
