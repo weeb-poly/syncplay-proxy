@@ -22,22 +22,6 @@ from syncplay.messages import getMessage
 folderSearchEnabled = True
 
 
-def isWindows():
-    return sys.platform.startswith(constants.OS_WINDOWS)
-
-
-def isLinux():
-    return sys.platform.startswith(constants.OS_LINUX)
-
-
-def isMacOS():
-    return sys.platform.startswith(constants.OS_MACOS)
-
-
-def isBSD():
-    return constants.OS_BSD in sys.platform or sys.platform.startswith(constants.OS_DRAGONFLY)
-
-
 def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
     """Retry calling the decorated function using an exponential backoff.
 
@@ -87,7 +71,7 @@ def parseTime(timeStr):
         return
     parts = parts.groupdict()
     time_params = {}
-    for (name, param) in parts.items():
+    for name, param in parts.items():
         if param:
             if name == "miliseconds":
                 time_params["microseconds"] = int(param) * 1000
@@ -96,7 +80,7 @@ def parseTime(timeStr):
     return datetime.timedelta(**time_params).total_seconds()
 
 
-def formatTime(timeInSeconds, weeksAsTitles=True):
+def formatTime(timeInSeconds, weeksAsTitles=True) -> str:
     if timeInSeconds < 0:
         timeInSeconds = -timeInSeconds
         sign = '-'
@@ -142,41 +126,6 @@ def formatSize(numOfBytes, precise=False):
 
 def isASCII(s):
     return all(ord(c) < 128 for c in s)
-
-
-def findResourcePath(resourceName):
-    if resourceName == "syncplay.lua":
-        resourcePath = os.path.join(findWorkingDir(), "resources", "lua", "intf", resourceName)
-    else:
-        resourcePath = os.path.join(findWorkingDir(), "resources", resourceName)
-    return resourcePath
-
-
-def findWorkingDir():
-    frozen = getattr(sys, 'frozen', '')
-    if not frozen:
-        path = os.path.dirname(__file__)
-    elif frozen in ('dll', 'console_exe', 'windows_exe', 'macosx_app'):
-        path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-    elif frozen:  # needed for PyInstaller
-        if getattr(sys, '_MEIPASS', '') is not None:
-            path = getattr(sys, '_MEIPASS', '')  # --onefile
-        else:
-            path = os.path.dirname(sys.executable)  # --onedir
-    else:
-        path = ""
-    return path
-
-
-def getResourcesPath():
-    if isWindows():
-        return findWorkingDir() + "\\resources\\"
-    else:
-        return findWorkingDir() + "/resources/"
-
-
-resourcespath = getResourcesPath()
-posixresourcespath = findWorkingDir().replace("\\", "/") + "/resources/"
 
 
 def getDefaultMonospaceFont():
@@ -246,7 +195,7 @@ def splitText(unicodeText, maxLength):
     try:
         unicodeText = str(unicodeText.encode("utf-8"), "utf-8", errors="ignore")
         unicodeArray = [unicodeText[i:i + maxLength] for i in range(0, len(unicodeText), maxLength)]
-        return(unicodeArray)
+        return unicodeArray
     except:
         pass
     return [""]
@@ -297,7 +246,7 @@ def hashFilesize(size):
     return hashlib.sha256(str(size).encode('utf-8')).hexdigest()[:12]
 
 
-def sameHashed(string1raw, string1hashed, string2raw, string2hashed):
+def sameHashed(string1raw, string1hashed, string2raw, string2hashed) -> bool:
     try:
         if string1raw.lower() == string2raw.lower():
             return True
@@ -313,7 +262,7 @@ def sameHashed(string1raw, string1hashed, string2raw, string2hashed):
         return True
 
 
-def sameFilename(filename1, filename2):
+def sameFilename(filename1, filename2) -> bool:
     try:
         filename1 = filename1
     except UnicodeDecodeError:
@@ -331,7 +280,7 @@ def sameFilename(filename1, filename2):
         return False
 
 
-def sameFilesize(filesize1, filesize2):
+def sameFilesize(filesize1, filesize2) -> bool:
     if filesize1 == 0 or filesize2 == 0:
         return True
     elif sameHashed(filesize1, hashFilesize(filesize1), filesize2, hashFilesize(filesize2)):
@@ -340,7 +289,7 @@ def sameFilesize(filesize1, filesize2):
         return False
 
 
-def sameFileduration(duration1, duration2):
+def sameFileduration(duration1, duration2) -> bool:
     if not constants.SHOW_DURATION_NOTIFICATION:
         return True
     elif abs(round(duration1) - round(duration2)) < constants.DIFFERENT_DURATION_THRESHOLD:
@@ -355,7 +304,7 @@ def meetsMinVersion(version, minVersion):
     return versiontotuple(version) >= versiontotuple(minVersion)
 
 
-def isURL(path):
+def isURL(path) -> bool:
     if path is None:
         return False
     elif "://" in path:
@@ -384,7 +333,7 @@ def convertMultilineStringToList(multilineString):
     return str.split(multilineString, "\n") if multilineString else ""
 
 
-def playlistIsValid(files):
+def playlistIsValid(files) -> bool:
     if len(files) > constants.PLAYLIST_MAX_ITEMS:
         return False
     elif sum(map(len, files)) > constants.PLAYLIST_MAX_CHARACTERS:
