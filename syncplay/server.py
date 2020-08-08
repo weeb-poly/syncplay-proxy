@@ -79,7 +79,7 @@ class SyncFactory(Factory):
             "isolateRooms": self.isolateRooms,
             "readiness": not self.disableReady,
             "managedRooms": True,
-            "chat"] = not self.disableChat,
+            "chat": not self.disableChat,
             "maxChatMessageLength": self.maxChatMessageLength,
             "maxUsernameLength": self.maxUsernameLength,
             "maxRoomNameLength": constants.MAX_ROOM_NAME_LENGTH,

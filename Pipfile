@@ -15,3 +15,6 @@ Twisted = {extras = ["tls"], version = ">=16.4.0"}
 
 [requires]
 python_version = "3.6"
+
+[scripts]
+server = "sudo ./syncplayServer.py --password $SYNCPLAY_PASSWORD --salt $SYNCPLAY_SALT --port $SYNCPLAY_PORT --tls $SYNCPLAY_TLS_DIR"
