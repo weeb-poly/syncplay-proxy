@@ -34,7 +34,8 @@ class JSONCommandProtocol(LineReceiver):
             elif command == "TLS":
                 self.handleTLS(message)
             else:
-                self.dropWithError(getMessage("unknown-command-server-error").format(message))  # TODO: log, not drop
+                # TODO: log, not drop
+                self.dropWithError(getMessage("unknown-command-server-error").format(message))
 
     def lineReceived(self, line):
         try:
@@ -44,7 +45,7 @@ class JSONCommandProtocol(LineReceiver):
             return
         if not line:
             return
-        self.showDebugMessage("client/server << {}".format(line))
+        self.showDebugMessage(f"client/server << {line}")
         try:
             messages = json.loads(line)
         except json.decoder.JSONDecodeError:
@@ -56,7 +57,7 @@ class JSONCommandProtocol(LineReceiver):
     def sendMessage(self, dict_):
         line = json.dumps(dict_)
         self.sendLine(line.encode('utf-8'))
-        self.showDebugMessage("client/server >> {}".format(line))
+        self.showDebugMessage(f"client/server >> {line}")
 
     def drop(self):
         self.transport.loseConnection()

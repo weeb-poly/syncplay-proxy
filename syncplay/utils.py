@@ -175,24 +175,6 @@ def sameFilename(filename1, filename2) -> bool:
         return False
 
 
-def sameFilesize(filesize1, filesize2) -> bool:
-    if filesize1 == 0 or filesize2 == 0:
-        return True
-    elif sameHashed(filesize1, hashFilesize(filesize1), filesize2, hashFilesize(filesize2)):
-        return True
-    else:
-        return False
-
-
-def sameFileduration(duration1, duration2) -> bool:
-    if not constants.SHOW_DURATION_NOTIFICATION:
-        return True
-    elif abs(round(duration1) - round(duration2)) < constants.DIFFERENT_DURATION_THRESHOLD:
-        return True
-    else:
-        return False
-
-
 def meetsMinVersion(version, minVersion) -> bool:
     def versiontotuple(ver):
         return tuple(map(int, ver.split(".")))
