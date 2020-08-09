@@ -13,7 +13,7 @@ from syncplay.utils import meetsMinVersion
 
 
 class JSONCommandProtocol(LineReceiver):
-    def handleMessages(self, messages):
+    def handleMessages(self, messages: dict) -> None:
         for command, message in messages.items():
             if command == "Hello":
                 self.handleHello(message)
@@ -33,7 +33,7 @@ class JSONCommandProtocol(LineReceiver):
                 # TODO: log, not drop
                 self.dropWithError(getMessage("unknown-command-server-error").format(message))
 
-    def lineReceived(self, line):
+    def lineReceived(self, line: bytes) -> None:
         try:
             line = line.decode('utf-8').strip()
         except UnicodeDecodeError:
@@ -50,7 +50,7 @@ class JSONCommandProtocol(LineReceiver):
         else:
             self.handleMessages(messages)
 
-    def sendMessage(self, dict_):
+    def sendMessage(self, dict_: dict) -> None:
         line = json.dumps(dict_)
         self.sendLine(line.encode('utf-8'))
         self.showDebugMessage(f"client/server >> {line}")
@@ -60,6 +60,15 @@ class JSONCommandProtocol(LineReceiver):
 
     def dropWithError(self, error):
         raise NotImplementedError()
+
+
+def requireLogged(f):
+    @wraps(f)
+    def wrapper(self, *args, **kwds):
+        if not self._logged:
+            self.dropWithError(getMessage("not-known-server-error"))
+        return f(self, *args, **kwds)
+    return wrapper
 
 
 class SyncServerProtocol(JSONCommandProtocol):
@@ -75,32 +84,24 @@ class SyncServerProtocol(JSONCommandProtocol):
         self._clientLatencyCalculationArrivalTime = 0
         self._watcher = None
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash('|'.join((
             self.transport.getPeer().host,
             str(id(self)),
         )))
 
-    def requireLogged(f):  # @NoSelf
-        @wraps(f)
-        def wrapper(self, *args, **kwds):
-            if not self._logged:
-                self.dropWithError(getMessage("not-known-server-error"))
-            return f(self, *args, **kwds)
-        return wrapper
-
-    def showDebugMessage(self, line):
+    def showDebugMessage(self, line) -> None:
         pass
 
-    def dropWithError(self, error):
+    def dropWithError(self, error) -> None:
         logging.error(getMessage("client-drop-server-error").format(self.transport.getPeer().host, error))
         self.sendError(error)
         self.drop()
 
-    def connectionLost(self, reason):
+    def connectionLost(self, reason) -> None:
         self._factory.removeWatcher(self._watcher)
 
-    def getFeatures(self):
+    def getFeatures(self) -> dict:
         if not self._features:
             self._features = {
                 "sharedPlaylists": meetsMinVersion(self._version, SHARED_PLAYLIST_MIN_VERSION),
@@ -111,13 +112,13 @@ class SyncServerProtocol(JSONCommandProtocol):
             }
         return self._features
 
-    def isLogged(self):
+    def isLogged(self) -> bool:
         return self._logged
 
-    def meetsMinVersion(self, version):
+    def meetsMinVersion(self, version) -> bool:
         return self._version >= version
 
-    def getVersion(self):
+    def getVersion(self) -> str:
         return self._version
 
     def _extractHelloArguments(self, hello):
@@ -146,7 +147,7 @@ class SyncServerProtocol(JSONCommandProtocol):
                 return False
         return True
 
-    def handleHello(self, hello):
+    def handleHello(self, hello) -> None:
         username, serverPassword, roomName, version, features = self._extractHelloArguments(hello)
         if not username or not roomName or not version:
             self.dropWithError(getMessage("hello-server-error"))
@@ -174,7 +175,7 @@ class SyncServerProtocol(JSONCommandProtocol):
     def setWatcher(self, watcher):
         self._watcher = watcher
 
-    def sendHello(self, clientVersion):
+    def sendHello(self, clientVersion: str):
         hello = {}
         username = self._watcher.name
         hello["username"] = username
@@ -201,8 +202,8 @@ class SyncServerProtocol(JSONCommandProtocol):
                 room = setting.get("room")
                 self._factory.authRoomController(self._watcher, password, room)
             elif command == "ready":
-                manuallyInitiated = setting.get('manuallyInitiated', False)
-                self._factory.setReady(self._watcher, setting['isReady'], manuallyInitiated=manuallyInitiated)
+                manual = setting.get('manuallyInitiated', False)
+                self._factory.setReady(self._watcher, setting['isReady'], manuallyInitiated=manual)
             elif command == "playlistChange":
                 self._factory.setPlaylist(self._watcher, setting['files'])
             elif command == "playlistIndex":
@@ -214,7 +215,7 @@ class SyncServerProtocol(JSONCommandProtocol):
     def sendSet(self, setting) -> None:
         self.sendMessage({"Set": setting})
 
-    def sendNewControlledRoom(self, roomName, password) -> None:
+    def sendNewControlledRoom(self, roomName: str, password) -> None:
         self.sendSet({
             "newControlledRoom": {
                 "password": password,
@@ -222,7 +223,7 @@ class SyncServerProtocol(JSONCommandProtocol):
             }
         })
 
-    def sendControlledRoomAuthStatus(self, success, username: str, roomname) -> None:
+    def sendControlledRoomAuthStatus(self, success, username: str, roomname: str) -> None:
         self.sendSet({
             "controllerAuth": {
                 "user": username,
@@ -248,7 +249,7 @@ class SyncServerProtocol(JSONCommandProtocol):
             }
         })
 
-    def setPlaylistIndex(self, username: str, index) -> None:
+    def setPlaylistIndex(self, username: str, index: int) -> None:
         self.sendSet({
             "playlistIndex": {
                 "user": username,
@@ -271,6 +272,7 @@ class SyncServerProtocol(JSONCommandProtocol):
         if room:
             if room.name not in userlist:
                 userlist[room.name] = {}
+
             userFile = {
                 "position": 0,
                 "file": watcher.getFile() if watcher.getFile() else {},
@@ -295,6 +297,7 @@ class SyncServerProtocol(JSONCommandProtocol):
         processingTime = 0
         if self._clientLatencyCalculationArrivalTime:
             processingTime = time.time() - self._clientLatencyCalculationArrivalTime
+
         playstate = {
             "position": position if position else 0,
             "paused": paused,

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import codecs
 import hashlib
@@ -25,16 +27,30 @@ from syncplay.utils import RoomPasswordProvider, NotControlledRoom, RandomString
 
 
 class SyncFactory(Factory):
-    def __init__(self, port='', password='', motdFilePath=None, isolateRooms=False, salt=None,
-                 disableReady=False, disableChat=False, maxChatMessageLength=constants.MAX_CHAT_MESSAGE_LENGTH,
-                 maxUsernameLength=constants.MAX_USERNAME_LENGTH, statsDbFile=None, tlsCertPath=None):
-        self.isolateRooms = isolateRooms
+    isolateRooms: bool
+    port: str
+    password: str
+    _salt: str
+    disableReady: bool
+    disableChat: bool
+    maxChatMessageLength: int
+    maxUsernameLength: int
+    # certPath: Optional[str]
+    serverAcceptsTLS: bool
+    _TLSattempts: int
+
+    def __init__(self, port: str = '', password: str = '', motdFilePath=None, isolateRooms: bool = False, salt=None,
+                 disableReady: bool = False, disableChat: bool = False, maxChatMessageLength: int = constants.MAX_CHAT_MESSAGE_LENGTH,
+                 maxUsernameLength: int = constants.MAX_USERNAME_LENGTH, statsDbFile=None, tlsCertPath=None):
         logging.info(getMessage("welcome-server-notification").format(syncplay.version))
+        self.isolateRooms = isolateRooms
         self.port = port
+
         if password:
             password = password.encode('utf-8')
             password = hashlib.md5(password).hexdigest()
         self.password = password
+
         if salt is None:
             salt = RandomStringGenerator.generate_server_salt()
             logging.warning(getMessage("no-salt-notification").format(salt))
@@ -42,32 +58,34 @@ class SyncFactory(Factory):
         self._motdFilePath = motdFilePath
         self.disableReady = disableReady
         self.disableChat = disableChat
-        self.maxChatMessageLength = maxChatMessageLength if maxChatMessageLength is not None else constants.MAX_CHAT_MESSAGE_LENGTH
-        self.maxUsernameLength = maxUsernameLength if maxUsernameLength is not None else constants.MAX_USERNAME_LENGTH
+
+        self.maxChatMessageLength = maxChatMessageLength
+        self.maxUsernameLength = maxUsernameLength
+
         if not isolateRooms:
             self._roomManager = RoomManager()
         else:
             self._roomManager = PublicRoomManager()
+
+        self._statsDbHandle = None
         if statsDbFile is not None:
             self._statsDbHandle = DBManager(statsDbFile)
             self._statsRecorder = StatsRecorder(self._statsDbHandle, self._roomManager)
-            statsDelay = 5*(int(self.port)%10 + 1)
+            statsDelay = 5 * (int(self.port) % 10 + 1)
             self._statsRecorder.startRecorder(statsDelay)
-        else:
-            self._statsDbHandle = None
-        if tlsCertPath is not None:
-            self.certPath = tlsCertPath
-            self._TLSattempts = 0
+
+        self.certPath = tlsCertPath
+        self.serverAcceptsTLS = False
+        self._TLSattempts = 0
+        if self.certPath is not None:
             self._allowTLSconnections(self.certPath)
         else:
-            self.certPath = None
             self.options = None
-            self.serverAcceptsTLS = False
 
     def buildProtocol(self, addr):
         return SyncServerProtocol(self)
 
-    def sendState(self, watcher, doSeek: bool = False, forcedUpdate: bool = False) -> None:
+    def sendState(self, watcher: Watcher, doSeek: bool = False, forcedUpdate: bool = False) -> None:
         room = watcher.room
         if room:
             paused, position = room.isPaused(), room.getPosition()
@@ -87,7 +105,7 @@ class SyncFactory(Factory):
         }
         return features
 
-    def getMotd(self, userIp, username: str, room, clientVersion) -> str:
+    def getMotd(self, userIp, username: str, room, clientVersion: str) -> str:
         oldClient = False
         if constants.WARN_OLD_CLIENTS:
             if not meetsMinVersion(clientVersion, constants.RECENT_CLIENT_THRESHOLD):
@@ -100,7 +118,10 @@ class SyncFactory(Factory):
                 if oldClient:
                     motdwarning = getMessage("new-syncplay-available-motd-message").format(clientVersion)
                     motd = f"{motdwarning}\n{motd}"
-                return motd if len(motd) < constants.SERVER_MAX_TEMPLATE_LENGTH else getMessage("server-messed-up-motd-too-long").format(constants.SERVER_MAX_TEMPLATE_LENGTH, len(motd))
+                if len(motd) < constants.SERVER_MAX_TEMPLATE_LENGTH:
+                    return motd
+                else:
+                    return getMessage("server-messed-up-motd-too-long").format(constants.SERVER_MAX_TEMPLATE_LENGTH, len(motd))
             except ValueError:
                 return getMessage("server-messed-up-motd-unescaped-placeholders")
         elif oldClient:
@@ -114,7 +135,7 @@ class SyncFactory(Factory):
         watcher = Watcher(self, watcherProtocol, username)
         self.setWatcherRoom(watcher, roomName, asJoin=True)
 
-    def setWatcherRoom(self, watcher, roomName: str, asJoin: bool = False) -> None:
+    def setWatcherRoom(self, watcher: Watcher, roomName: str, asJoin: bool = False) -> None:
         roomName = truncateText(roomName, constants.MAX_ROOM_NAME_LENGTH)
         self._roomManager.moveWatcher(watcher, roomName)
         if asJoin:
@@ -124,37 +145,39 @@ class SyncFactory(Factory):
 
         room = watcher.room
         roomSetByName = room.setBy.name if room.setBy else None
-        watcher.setPlaylist(roomSetByName, room.getPlaylist())
-        watcher.setPlaylistIndex(roomSetByName, room.getPlaylistIndex())
+        watcher.setPlaylist(roomSetByName, room.playlist)
+        watcher.setPlaylistIndex(roomSetByName, room.playlistIndex)
         if RoomPasswordProvider.isControlledRoom(roomName):
-            for controller in room.getControllers():
+            for controller in room.controllers:
                 watcher.sendControlledRoomAuthStatus(True, controller, roomName)
 
-    def sendRoomSwitchMessage(self, watcher) -> None:
+    def sendRoomSwitchMessage(self, watcher: Watcher) -> None:
         l = lambda w: w.sendSetting(watcher.name, watcher.room, None, None)
         self._roomManager.broadcast(watcher, l)
-        self._roomManager.broadcastRoom(watcher, lambda w: w.sendSetReady(watcher.name, watcher.isReady(), False))
+        l = lambda w: w.sendSetReady(watcher.name, watcher.isReady(), False)
+        self._roomManager.broadcastRoom(watcher, l)
 
-    def removeWatcher(self, watcher) -> None:
+    def removeWatcher(self, watcher: Watcher) -> None:
         if watcher and watcher.room:
             self.sendLeftMessage(watcher)
             self._roomManager.removeWatcher(watcher)
 
-    def sendLeftMessage(self, watcher) -> None:
+    def sendLeftMessage(self, watcher: Watcher) -> None:
         l = lambda w: w.sendSetting(watcher.name, watcher.room, None, {"left": True})
         self._roomManager.broadcast(watcher, l)
 
-    def sendJoinMessage(self, watcher) -> None:
+    def sendJoinMessage(self, watcher: Watcher) -> None:
         l = lambda w: w.sendSetting(watcher.name, watcher.room, None, {"joined": True, "version": watcher.version, "features": watcher.getFeatures()}) if w != watcher else None
         self._roomManager.broadcast(watcher, l)
-        self._roomManager.broadcastRoom(watcher, lambda w: w.sendSetReady(watcher.name, watcher.isReady(), False))
+        l = lambda w: w.sendSetReady(watcher.name, watcher.isReady(), False)
+        self._roomManager.broadcastRoom(watcher, l)
 
-    def sendFileUpdate(self, watcher) -> None:
+    def sendFileUpdate(self, watcher: Watcher) -> None:
         if watcher.getFile():
             l = lambda w: w.sendSetting(watcher.name, watcher.room, watcher.getFile(), None)
             self._roomManager.broadcast(watcher, l)
 
-    def forcePositionUpdate(self, watcher, doSeek, watcherPauseState) -> None:
+    def forcePositionUpdate(self, watcher: Watcher, doSeek, watcherPauseState) -> None:
         room = watcher.room
         if room.canControl(watcher):
             paused, position = room.isPaused(), watcher.getPosition()
@@ -169,7 +192,7 @@ class SyncFactory(Factory):
     def getAllWatchersForUser(self, forUser):
         return self._roomManager.getAllWatchersForUser(forUser)
 
-    def authRoomController(self, watcher, password, roomBaseName=None) -> None:
+    def authRoomController(self, watcher: Watcher, password, roomBaseName=None) -> None:
         room = watcher.room
         roomName = roomBaseName if roomBaseName else room.name
         try:
@@ -198,8 +221,8 @@ class SyncFactory(Factory):
             watcher.room.setPlaylist(files, watcher)
             self._roomManager.broadcastRoom(watcher, lambda w: w.setPlaylist(watcher.name, files))
         else:
-            watcher.setPlaylist(room.name, room.getPlaylist())
-            watcher.setPlaylistIndex(room.name, room.getPlaylistIndex())
+            watcher.setPlaylist(room.name, room.playlist)
+            watcher.setPlaylistIndex(room.name, room.playlistIndex)
 
     def setPlaylistIndex(self, watcher, index) -> None:
         room = watcher.room
@@ -207,7 +230,7 @@ class SyncFactory(Factory):
             watcher.room.setPlaylistIndex(index, watcher)
             self._roomManager.broadcastRoom(watcher, lambda w: w.setPlaylistIndex(watcher.name, index))
         else:
-            watcher.setPlaylistIndex(room.name, room.getPlaylistIndex())
+            watcher.setPlaylistIndex(room.name, room.playlistIndex)
 
     def _allowTLSconnections(self, path: str) -> None:
         try:
@@ -260,8 +283,11 @@ class SyncFactory(Factory):
             self.serverAcceptsTLS = True
 
 
-class StatsRecorder(object):
-    def __init__(self, dbHandle, roomManager):
+class StatsRecorder:
+    _dbHandle: DBManager
+    _roomManagerHandle: RoomManager
+
+    def __init__(self, dbHandle: DBManager, roomManager: RoomManager):
         self._dbHandle = dbHandle
         self._roomManagerHandle = roomManager
 
@@ -287,8 +313,10 @@ class StatsRecorder(object):
             pass
 
 
-class DBManager(object):
-    def __init__(self, dbpath):
+class DBManager:
+    _dbPath: str
+
+    def __init__(self, dbpath: str):
         self._dbPath = dbpath
         self._connection = None
 
@@ -309,77 +337,76 @@ class DBManager(object):
         self._connection.runQuery("INSERT INTO clients_snapshots VALUES (?, ?)", content)
 
 
-class RoomManager(object):
+class RoomManager:
+    # _rooms: Dict[str, Room]
+
     def __init__(self):
         self._rooms = {}
 
-    def broadcastRoom(self, sender, whatLambda) -> None:
+    def broadcastRoom(self, sender: Watcher, whatLambda) -> None:
         room = sender.room
         if room and room.name in self._rooms:
             for receiver in room.watchers:
                 whatLambda(receiver)
 
-    def broadcast(self, sender, whatLambda) -> None:
+    def broadcast(self, sender: Watcher, whatLambda) -> None:
         for room in self._rooms.values():
             for receiver in room.watchers:
                 whatLambda(receiver)
 
-    def getAllWatchersForUser(self, sender) -> None:
+    def getAllWatchersForUser(self, sender: Watcher) -> list:
         watchers = []
         for room in self._rooms.values():
             for watcher in room.watchers:
                 watchers.append(watcher)
         return watchers
 
-    def moveWatcher(self, watcher, roomName) -> None:
+    def moveWatcher(self, watcher: Watcher, roomName: str) -> None:
         roomName = truncateText(roomName, constants.MAX_ROOM_NAME_LENGTH)
         self.removeWatcher(watcher)
         room = self._getRoom(roomName)
         room.addWatcher(watcher)
 
-    def removeWatcher(self, watcher) -> None:
+    def removeWatcher(self, watcher: Watcher) -> None:
         oldRoom = watcher.room
         if oldRoom:
             oldRoom.removeWatcher(watcher)
             self._deleteRoomIfEmpty(oldRoom)
 
-    def _getRoom(self, roomName):
-        if roomName in self._rooms:
-            return self._rooms[roomName]
-        else:
+    def _getRoom(self, roomName: str) -> Room:
+        if roomName not in self._rooms:
             if RoomPasswordProvider.isControlledRoom(roomName):
-                room = ControlledRoom(roomName)
+                self._rooms[roomName] = ControlledRoom(roomName)
             else:
-                room = Room(roomName)
-            self._rooms[roomName] = room
-            return room
+                self._rooms[roomName] = Room(roomName)
+        return self._rooms[roomName]
 
-    def _deleteRoomIfEmpty(self, room) -> None:
+    def _deleteRoomIfEmpty(self, room: Room) -> None:
         if room.isEmpty() and room.name in self._rooms:
             del self._rooms[room.name]
 
-    def findFreeUsername(self, username) -> str:
+    def findFreeUsername(self, username: str) -> str:
         username = truncateText(username, constants.MAX_USERNAME_LENGTH)
-        allnames = []
+        allnames = set()
         for room in self._rooms.values():
             for watcher in room.watchers:
-                allnames.append(watcher.name.lower())
+                allnames.add(watcher.name.lower())
         while username.lower() in allnames:
             username += '_'
         return username
 
-    def exportRooms(self):
+    def exportRooms(self) -> dict:
         return self._rooms
 
 
 class PublicRoomManager(RoomManager):
-    def broadcast(self, sender, what) -> None:
+    def broadcast(self, sender: Watcher, what) -> None:
         self.broadcastRoom(sender, what)
 
-    def getAllWatchersForUser(self, sender):
+    def getAllWatchersForUser(self, sender: Watcher):
         return sender.room.watchers
 
-    def moveWatcher(self, watcher, room) -> None:
+    def moveWatcher(self, watcher: Watcher, room: str) -> None:
         oldRoom = watcher.room
         l = lambda w: w.sendSetting(watcher.name, oldRoom, None, {"left": True})
         self.broadcast(watcher, l)
@@ -387,11 +414,20 @@ class PublicRoomManager(RoomManager):
         watcher.setFile(watcher.getFile())
 
 
-class Room(object):
+class Room:
     STATE_PAUSED = 0
     STATE_PLAYING = 1
 
-    def __init__(self, name):
+    _name: str
+    # _watchers: Dict[str, Watcher]
+    _playState: int
+    # _setBy: Optional[Watcher]
+    _playlist: list
+    # _playlistIndex: Optional[int]
+    _lastUpdate: float
+    # _position: Union[int, float]
+
+    def __init__(self, name: str):
         self._name = name
         self._watchers = {}
         self._playState = self.STATE_PAUSED
@@ -401,11 +437,11 @@ class Room(object):
         self._lastUpdate = time.time()
         self._position = 0
 
-    def __str__(self, *args, **kwargs):
+    def __str__(self, *args, **kwargs) -> str:
         return self.name
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     def getPosition(self):
@@ -417,7 +453,10 @@ class Room(object):
             self._lastUpdate = time.time()
             return self._position
         elif self._position is not None:
-            return self._position + (age if self._playState == self.STATE_PLAYING else 0)
+            pos = self._position
+            if self._playState == self.STATE_PLAYING:
+                pos += age
+            return pos
         else:
             return 0
 
@@ -431,23 +470,23 @@ class Room(object):
             watcher.setPosition(position)
             self._setBy = setBy
 
-    def isPlaying(self):
+    def isPlaying(self) -> bool:
         return self._playState == self.STATE_PLAYING
 
-    def isPaused(self):
+    def isPaused(self) -> bool:
         return self._playState == self.STATE_PAUSED
 
     @property
-    def watchers(self):
+    def watchers(self) -> list:
         return list(self._watchers.values())
 
-    def addWatcher(self, watcher) -> None:
+    def addWatcher(self, watcher: Watcher) -> None:
         if self._watchers:
             watcher.setPosition(self.getPosition())
         self._watchers[watcher.name] = watcher
         watcher.room = self
 
-    def removeWatcher(self, watcher) -> None:
+    def removeWatcher(self, watcher: Watcher) -> None:
         if watcher.name not in self._watchers:
             return
         del self._watchers[watcher.name]
@@ -462,25 +501,37 @@ class Room(object):
     def setBy(self):
         return self._setBy
 
-    def canControl(self, watcher) -> bool:
+    def canControl(self, watcher: Watcher) -> bool:
         return True
+
+    @property
+    def playlist(self):
+        return self._playlist
+
+    @playlist.setter
+    def playlist(self, files) -> None:
+        self.setPlaylist(files)
 
     def setPlaylist(self, files, setBy=None) -> None:
         self._playlist = files
 
+    @property
+    def playlistIndex(self):
+        return self._playlistIndex
+    
+    @playlistIndex.setter
+    def playlistIndex(self, index) -> None:
+        self.setPlaylistIndex(index)
+
     def setPlaylistIndex(self, index, setBy=None) -> None:
         self._playlistIndex = index
 
-    def getPlaylist(self):
-        return self._playlist
-
-    def getPlaylistIndex(self):
-        return self._playlistIndex
-
 
 class ControlledRoom(Room):
-    def __init__(self, name):
-        Room.__init__(self, name)
+    # _controllers: Dict[str, Watcher]
+
+    def __init__(self, name: str):
+        super().__init__(name)
         self._controllers = {}
 
     def getPosition(self):
@@ -492,14 +543,17 @@ class ControlledRoom(Room):
             self._lastUpdate = time.time()
             return self._position
         elif self._position is not None:
-            return self._position + (age if self._playState == self.STATE_PLAYING else 0)
+            pos = self._position
+            if self._playState == self.STATE_PLAYING:
+                pos += age
+            return pos
         else:
             return 0
 
-    def addController(self, watcher) -> None:
+    def addController(self, watcher: Watcher) -> None:
         self._controllers[watcher.name] = watcher
 
-    def removeWatcher(self, watcher) -> None:
+    def removeWatcher(self, watcher: Watcher) -> None:
         Room.removeWatcher(self, watcher)
         if watcher.name in self._controllers:
             del self._controllers[watcher.name]
@@ -520,15 +574,20 @@ class ControlledRoom(Room):
         if self.canControl(setBy):
             self._playlistIndex = index
 
-    def canControl(self, watcher) -> bool:
+    def canControl(self, watcher: Watcher) -> bool:
         return watcher.name in self._controllers
 
-    def getControllers(self):
+    @property
+    def controllers(self) -> dict:
         return self._controllers
 
 
-class Watcher(object):
-    def __init__(self, server, connector, name):
+class Watcher:
+    _server: SyncFactory
+    _name: str
+    _lastUpdatedOn: float
+
+    def __init__(self, server: SyncFactory, connector, name: str):
         self._ready = None
         self._server = server
         self._connector = connector
@@ -595,13 +654,13 @@ class Watcher(object):
             timePassedSinceSet = 0
         return self._position + timePassedSinceSet
 
-    def sendSetting(self, user, room, file_, event) -> None:
+    def sendSetting(self, user: str, room: Room, file_, event) -> None:
         self._connector.sendUserSetting(user, room, file_, event)
 
-    def sendNewControlledRoom(self, roomBaseName, password) -> None:
+    def sendNewControlledRoom(self, roomBaseName: str, password) -> None:
         self._connector.sendNewControlledRoom(roomBaseName, password)
 
-    def sendControlledRoomAuthStatus(self, success, username: str, room) -> None:
+    def sendControlledRoomAuthStatus(self, success, username: str, room: str) -> None:
         self._connector.sendControlledRoomAuthStatus(success, username, room)
 
     def sendChatMessage(self, message) -> None:
