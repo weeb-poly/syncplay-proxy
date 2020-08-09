@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import argparse
 import codecs
 import hashlib
@@ -85,7 +83,7 @@ class SyncFactory(Factory):
     def buildProtocol(self, addr):
         return SyncServerProtocol(self)
 
-    def sendState(self, watcher: Watcher, doSeek: bool = False, forcedUpdate: bool = False) -> None:
+    def sendState(self, watcher: 'Watcher', doSeek: bool = False, forcedUpdate: bool = False) -> None:
         room = watcher.room
         if room:
             paused, position = room.isPaused(), room.getPosition()
@@ -135,7 +133,7 @@ class SyncFactory(Factory):
         watcher = Watcher(self, watcherProtocol, username)
         self.setWatcherRoom(watcher, roomName, asJoin=True)
 
-    def setWatcherRoom(self, watcher: Watcher, roomName: str, asJoin: bool = False) -> None:
+    def setWatcherRoom(self, watcher: 'Watcher', roomName: str, asJoin: bool = False) -> None:
         roomName = truncateText(roomName, constants.MAX_ROOM_NAME_LENGTH)
         self._roomManager.moveWatcher(watcher, roomName)
         if asJoin:
@@ -151,33 +149,33 @@ class SyncFactory(Factory):
             for controller in room.controllers:
                 watcher.sendControlledRoomAuthStatus(True, controller, roomName)
 
-    def sendRoomSwitchMessage(self, watcher: Watcher) -> None:
+    def sendRoomSwitchMessage(self, watcher: 'Watcher') -> None:
         l = lambda w: w.sendSetting(watcher.name, watcher.room, None, None)
         self._roomManager.broadcast(watcher, l)
         l = lambda w: w.sendSetReady(watcher.name, watcher.isReady(), False)
         self._roomManager.broadcastRoom(watcher, l)
 
-    def removeWatcher(self, watcher: Watcher) -> None:
+    def removeWatcher(self, watcher: 'Watcher') -> None:
         if watcher and watcher.room:
             self.sendLeftMessage(watcher)
             self._roomManager.removeWatcher(watcher)
 
-    def sendLeftMessage(self, watcher: Watcher) -> None:
+    def sendLeftMessage(self, watcher: 'Watcher') -> None:
         l = lambda w: w.sendSetting(watcher.name, watcher.room, None, {"left": True})
         self._roomManager.broadcast(watcher, l)
 
-    def sendJoinMessage(self, watcher: Watcher) -> None:
+    def sendJoinMessage(self, watcher: 'Watcher') -> None:
         l = lambda w: w.sendSetting(watcher.name, watcher.room, None, {"joined": True, "version": watcher.version, "features": watcher.getFeatures()}) if w != watcher else None
         self._roomManager.broadcast(watcher, l)
         l = lambda w: w.sendSetReady(watcher.name, watcher.isReady(), False)
         self._roomManager.broadcastRoom(watcher, l)
 
-    def sendFileUpdate(self, watcher: Watcher) -> None:
+    def sendFileUpdate(self, watcher: 'Watcher') -> None:
         if watcher.getFile():
             l = lambda w: w.sendSetting(watcher.name, watcher.room, watcher.getFile(), None)
             self._roomManager.broadcast(watcher, l)
 
-    def forcePositionUpdate(self, watcher: Watcher, doSeek, watcherPauseState) -> None:
+    def forcePositionUpdate(self, watcher: 'Watcher', doSeek, watcherPauseState) -> None:
         room = watcher.room
         if room.canControl(watcher):
             paused, position = room.isPaused(), watcher.getPosition()
@@ -192,7 +190,7 @@ class SyncFactory(Factory):
     def getAllWatchersForUser(self, forUser):
         return self._roomManager.getAllWatchersForUser(forUser)
 
-    def authRoomController(self, watcher: Watcher, password, roomBaseName=None) -> None:
+    def authRoomController(self, watcher: 'Watcher', password, roomBaseName=None) -> None:
         room = watcher.room
         roomName = roomBaseName if roomBaseName else room.name
         try:
@@ -284,10 +282,10 @@ class SyncFactory(Factory):
 
 
 class StatsRecorder:
-    _dbHandle: DBManager
-    _roomManagerHandle: RoomManager
+    _dbHandle: 'DBManager'
+    _roomManagerHandle: 'RoomManager'
 
-    def __init__(self, dbHandle: DBManager, roomManager: RoomManager):
+    def __init__(self, dbHandle: 'DBManager', roomManager: 'RoomManager'):
         self._dbHandle = dbHandle
         self._roomManagerHandle = roomManager
 
@@ -343,37 +341,37 @@ class RoomManager:
     def __init__(self):
         self._rooms = {}
 
-    def broadcastRoom(self, sender: Watcher, whatLambda) -> None:
+    def broadcastRoom(self, sender: 'Watcher', whatLambda) -> None:
         room = sender.room
         if room and room.name in self._rooms:
             for receiver in room.watchers:
                 whatLambda(receiver)
 
-    def broadcast(self, sender: Watcher, whatLambda) -> None:
+    def broadcast(self, sender: 'Watcher', whatLambda) -> None:
         for room in self._rooms.values():
             for receiver in room.watchers:
                 whatLambda(receiver)
 
-    def getAllWatchersForUser(self, sender: Watcher) -> list:
+    def getAllWatchersForUser(self, sender: 'Watcher') -> list:
         watchers = []
         for room in self._rooms.values():
             for watcher in room.watchers:
                 watchers.append(watcher)
         return watchers
 
-    def moveWatcher(self, watcher: Watcher, roomName: str) -> None:
+    def moveWatcher(self, watcher: 'Watcher', roomName: str) -> None:
         roomName = truncateText(roomName, constants.MAX_ROOM_NAME_LENGTH)
         self.removeWatcher(watcher)
         room = self._getRoom(roomName)
         room.addWatcher(watcher)
 
-    def removeWatcher(self, watcher: Watcher) -> None:
+    def removeWatcher(self, watcher: 'Watcher') -> None:
         oldRoom = watcher.room
         if oldRoom:
             oldRoom.removeWatcher(watcher)
             self._deleteRoomIfEmpty(oldRoom)
 
-    def _getRoom(self, roomName: str) -> Room:
+    def _getRoom(self, roomName: str) -> 'Room':
         if roomName not in self._rooms:
             if RoomPasswordProvider.isControlledRoom(roomName):
                 self._rooms[roomName] = ControlledRoom(roomName)
@@ -381,7 +379,7 @@ class RoomManager:
                 self._rooms[roomName] = Room(roomName)
         return self._rooms[roomName]
 
-    def _deleteRoomIfEmpty(self, room: Room) -> None:
+    def _deleteRoomIfEmpty(self, room: 'Room') -> None:
         if room.isEmpty() and room.name in self._rooms:
             del self._rooms[room.name]
 
@@ -400,13 +398,13 @@ class RoomManager:
 
 
 class PublicRoomManager(RoomManager):
-    def broadcast(self, sender: Watcher, what) -> None:
+    def broadcast(self, sender: 'Watcher', what) -> None:
         self.broadcastRoom(sender, what)
 
-    def getAllWatchersForUser(self, sender: Watcher):
+    def getAllWatchersForUser(self, sender: 'Watcher'):
         return sender.room.watchers
 
-    def moveWatcher(self, watcher: Watcher, room: str) -> None:
+    def moveWatcher(self, watcher: 'Watcher', room: str) -> None:
         oldRoom = watcher.room
         l = lambda w: w.sendSetting(watcher.name, oldRoom, None, {"left": True})
         self.broadcast(watcher, l)
@@ -480,13 +478,13 @@ class Room:
     def watchers(self) -> list:
         return list(self._watchers.values())
 
-    def addWatcher(self, watcher: Watcher) -> None:
+    def addWatcher(self, watcher: 'Watcher') -> None:
         if self._watchers:
             watcher.setPosition(self.getPosition())
         self._watchers[watcher.name] = watcher
         watcher.room = self
 
-    def removeWatcher(self, watcher: Watcher) -> None:
+    def removeWatcher(self, watcher: 'Watcher') -> None:
         if watcher.name not in self._watchers:
             return
         del self._watchers[watcher.name]
@@ -501,7 +499,7 @@ class Room:
     def setBy(self):
         return self._setBy
 
-    def canControl(self, watcher: Watcher) -> bool:
+    def canControl(self, watcher: 'Watcher') -> bool:
         return True
 
     @property
@@ -550,10 +548,10 @@ class ControlledRoom(Room):
         else:
             return 0
 
-    def addController(self, watcher: Watcher) -> None:
+    def addController(self, watcher: 'Watcher') -> None:
         self._controllers[watcher.name] = watcher
 
-    def removeWatcher(self, watcher: Watcher) -> None:
+    def removeWatcher(self, watcher: 'Watcher') -> None:
         Room.removeWatcher(self, watcher)
         if watcher.name in self._controllers:
             del self._controllers[watcher.name]
@@ -574,7 +572,7 @@ class ControlledRoom(Room):
         if self.canControl(setBy):
             self._playlistIndex = index
 
-    def canControl(self, watcher: Watcher) -> bool:
+    def canControl(self, watcher: 'Watcher') -> bool:
         return watcher.name in self._controllers
 
     @property
