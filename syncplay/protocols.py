@@ -1,14 +1,10 @@
 # coding:utf8
 import json
 import time
-from datetime import datetime
 from functools import wraps
+import logging
 
-from twisted import version as twistedVersion
-from twisted.internet.interfaces import IHandshakeListener
 from twisted.protocols.basic import LineReceiver
-from twisted.python.versions import Version
-from zope.interface.declarations import implementer
 
 import syncplay
 from syncplay.constants import PING_MOVING_AVERAGE_WEIGHT, CONTROLLED_ROOMS_MIN_VERSION, USER_READY_MIN_VERSION, SHARED_PLAYLIST_MIN_VERSION, CHAT_MIN_VERSION

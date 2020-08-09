@@ -1,20 +1,8 @@
-import ast
-import datetime
 import hashlib
-import itertools
 import random
-import os
-import platform
 import re
 import string
-import subprocess
-import sys
 import time
-import traceback
-import unicodedata
-import urllib.error
-import urllib.parse
-import urllib.request
 
 from syncplay import constants
 from syncplay.messages import getMessage
@@ -64,28 +52,6 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
     return deco_retry
 
 
-def formatSize(numOfBytes, precise=False) -> str:
-    if numOfBytes == 0:  # E.g. when file size privacy is enabled
-        return "???"
-    try:
-        megabytes = int(numOfBytes) / 1048576.0  # Technically this is a mebibyte, but whatever
-        if precise:
-            megabytes = round(megabytes, 1)
-        else:
-            megabytes = int(megabytes)
-        return str(megabytes) + getMessage("megabyte-suffix")
-    except:  # E.g. when filesize is hashed
-        return "???"
-
-
-def isASCII(s) -> bool:
-    return all(ord(c) < 128 for c in s)
-
-
-def limitedPowerset(s, minLength):
-    return itertools.chain.from_iterable(itertools.combinations(s, r) for r in range(len(s), minLength, -1))
-
-
 def truncateText(unicodeText, maxLength) -> str:
     try:
         unicodeText = unicodeText.decode('utf-8')
@@ -98,96 +64,10 @@ def truncateText(unicodeText, maxLength) -> str:
     return ""
 
 
-def stripfilename(filename, stripURL) -> str:
-    if filename:
-        try:
-            filename = filename
-        except UnicodeDecodeError:
-            pass
-        filename = urllib.parse.unquote(filename)
-        if stripURL:
-            try:
-                filename = urllib.parse.unquote(filename.split("/")[-1])
-            except UnicodeDecodeError:
-                filename = urllib.parse.unquote(filename.split("/")[-1])
-        return re.sub(constants.FILENAME_STRIP_REGEX, "", filename)
-    else:
-        return ""
-
-
-def stripRoomName(RoomName) -> str:
-    if RoomName:
-        try:
-            return re.sub(constants.ROOM_NAME_STRIP_REGEX, "\g<roomnamebase>", RoomName)
-        except IndexError:
-            return RoomName
-    else:
-        return ""
-
-
-def hashFilename(filename, stripURL=False) -> str:
-    if isURL(filename):
-        stripURL = True
-    strippedFilename = stripfilename(filename, stripURL)
-    try:
-        strippedFilename = strippedFilename.encode('utf-8')
-    except UnicodeDecodeError:
-        pass
-    filenameHash = hashlib.sha256(strippedFilename).hexdigest()[:12]
-    return filenameHash
-
-
-def hashFilesize(size):
-    return hashlib.sha256(str(size).encode('utf-8')).hexdigest()[:12]
-
-
-def sameHashed(string1raw, string1hashed, string2raw, string2hashed) -> bool:
-    try:
-        if string1raw.lower() == string2raw.lower():
-            return True
-    except AttributeError:
-        pass
-    if string1raw == string2raw:
-        return True
-    elif string1raw == string2hashed:
-        return True
-    elif string1hashed == string2raw:
-        return True
-    elif string1hashed == string2hashed:
-        return True
-
-
-def sameFilename(filename1, filename2) -> bool:
-    try:
-        filename1 = filename1
-    except UnicodeDecodeError:
-        pass
-    try:
-        filename2 = filename2
-    except UnicodeDecodeError:
-        pass
-    stripURL = True if isURL(filename1) ^ isURL(filename2) else False
-    if filename1 == constants.PRIVACY_HIDDENFILENAME or filename2 == constants.PRIVACY_HIDDENFILENAME:
-        return True
-    elif sameHashed(stripfilename(filename1, stripURL), hashFilename(filename1, stripURL), stripfilename(filename2, stripURL), hashFilename(filename2, stripURL)):
-        return True
-    else:
-        return False
-
-
 def meetsMinVersion(version, minVersion) -> bool:
     def versiontotuple(ver):
         return tuple(map(int, ver.split(".")))
     return versiontotuple(version) >= versiontotuple(minVersion)
-
-
-def isURL(path) -> bool:
-    if path is None:
-        return False
-    elif "://" in path:
-        return True
-    else:
-        return False
 
 
 def playlistIsValid(files) -> bool:

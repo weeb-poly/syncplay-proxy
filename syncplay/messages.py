@@ -1,4 +1,6 @@
 # coding:utf8
+import logging
+
 from syncplay import constants
 
 from . import messages_en
@@ -39,24 +41,18 @@ def getMissingStrings():
         if lang != "en" and lang != "CURRENT":
             for message in messages["en"]:
                 if message not in messages[lang]:
-                    missingStrings = missingStrings + f"({lang}) Missing: {message}\n"
+                    missingStrings += f"({lang}) Missing: {message}\n"
             for message in messages[lang]:
                 if message not in messages["en"]:
-                    missingStrings = missingStrings + f"({lang}) Unused: {message}\n"
+                    missingStrings += f"({lang}) Unused: {message}\n"
 
     return missingStrings
 
 
 def getInitialLanguage():
     try:
-        import sys
-        frozen = getattr(sys, 'frozen', '')
-        if frozen in 'macosx_app':
-            from PySide2.QtCore import QLocale
-            initialLanguage = QLocale.system().uiLanguages()[0].split('-')[0]
-        else:
-            import locale
-            initialLanguage = locale.getdefaultlocale()[0].split("_")[0]
+        import locale
+        initialLanguage = locale.getdefaultlocale()[0].split("_")[0]
         if initialLanguage not in messages:
             initialLanguage = constants.FALLBACK_INITIAL_LANGUAGE
     except:
@@ -68,8 +64,8 @@ def isValidLanguage(language):
     return language in messages
 
 
-def getMessage(type_, locale=None):
-    if constants.SHOW_TOOLTIPS == False:
+def getMessage(type_, locale=None) -> str:
+    if not constants.SHOW_TOOLTIPS:
         if "-tooltip" in type_:
             return ""
 
@@ -87,5 +83,5 @@ def getMessage(type_, locale=None):
         return str(messages["en"][type_])
     else:
         logging.warning(f"Cannot find message '{type_}'!")
-        #return "!{}".format(type_)  # TODO: Remove
+        # return f"!{type_}"  # TODO: Remove
         raise KeyError(type_)

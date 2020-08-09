@@ -2,7 +2,6 @@ import argparse
 import codecs
 import hashlib
 import os
-import random
 import time
 from string import Template
 import logging
@@ -94,8 +93,8 @@ class SyncFactory(Factory):
             if not meetsMinVersion(clientVersion, constants.RECENT_CLIENT_THRESHOLD):
                 oldClient = True
         if self._motdFilePath and os.path.isfile(self._motdFilePath):
+            args = {"version": syncplay.version, "userIp": userIp, "username": username, "room": room}
             tmpl = codecs.open(self._motdFilePath, "r", "utf-8-sig").read()
-            args = dict(version=syncplay.version, userIp=userIp, username=username, room=room)
             try:
                 motd = Template(tmpl).substitute(args)
                 if oldClient:
@@ -240,7 +239,7 @@ class SyncFactory(Factory):
             self.serverAcceptsTLS = True
             self._TLSattempts = 0
             logging.info("TLS support is enabled.")
-        except Exception as e:
+        except Exception:
             self.options = None
             self.serverAcceptsTLS = False
             self.lastEditCertTime = None
@@ -302,7 +301,7 @@ class DBManager(object):
         self._createSchema()
 
     def _createSchema(self):
-        initQuery = 'create table if not exists clients_snapshots (snapshot_time integer, version string)'
+        initQuery = 'CREATE TABLE IF NOT EXISTS clients_snapshots (snapshot_time integer, version string)'
         self._connection.runQuery(initQuery)
 
     def addVersionLog(self, timestamp, version):
@@ -618,7 +617,7 @@ class Watcher(object):
     def setPlaylist(self, username, files):
         self._connector.setPlaylist(username, files)
 
-    def __lt__(self, b):
+    def __lt__(self, b) -> bool:
         if self.getPosition() is None or self._file is None:
             return False
         if b.getPosition() is None or b.getFile() is None:
@@ -649,7 +648,7 @@ class Watcher(object):
             self._server.removeWatcher(self)
             self._connector.drop()
 
-    def __hasPauseChanged(self, paused):
+    def __hasPauseChanged(self, paused) -> bool:
         if paused is None:
             return False
         return self._room.isPaused() and not paused or not self._room.isPaused() and paused

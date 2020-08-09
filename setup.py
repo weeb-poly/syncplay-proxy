@@ -5,11 +5,13 @@ import setuptools
 
 from syncplay import projectURL, version as syncplay_version
 
+
 def read(fname):
     with open(fname, 'r') as f:
         return f.read()
 
-if os.getenv('SNAPCRAFT_PART_BUILD', None) is not None:
+
+if os.getenv('SNAPCRAFT_PART_BUILD') is not None:
     installRequirements = ["pyasn1"] + read('requirements.txt').splitlines()
 else:
     installRequirements = read('requirements.txt').splitlines() +\
