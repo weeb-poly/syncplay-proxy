@@ -2,6 +2,7 @@
 #coding:utf8
 
 import sys
+import logging
 
 # libpath
 
@@ -15,4 +16,5 @@ except AttributeError:
 from syncplay import ep_server
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     ep_server.main()
