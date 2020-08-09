@@ -65,9 +65,8 @@ def isValidLanguage(language):
 
 
 def getMessage(type_, locale=None) -> str:
-    if not constants.SHOW_TOOLTIPS:
-        if "-tooltip" in type_:
-            return ""
+    if "-tooltip" in type_:
+        return ""
 
     if not isValidLanguage(messages["CURRENT"]):
         setLanguage(getInitialLanguage())

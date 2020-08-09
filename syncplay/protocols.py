@@ -189,7 +189,7 @@ class SyncServerProtocol(JSONCommandProtocol):
         self.sendMessage({"Hello": hello})
 
     @requireLogged
-    def handleSet(self, settings):
+    def handleSet(self, settings) -> None:
         for command, setting in settings.items():
             if command == "room":
                 roomName = setting.get("name")
@@ -211,10 +211,10 @@ class SyncServerProtocol(JSONCommandProtocol):
                 # TODO: Check
                 self._watcher.setFeatures(setting)
 
-    def sendSet(self, setting):
+    def sendSet(self, setting) -> None:
         self.sendMessage({"Set": setting})
 
-    def sendNewControlledRoom(self, roomName, password):
+    def sendNewControlledRoom(self, roomName, password) -> None:
         self.sendSet({
             "newControlledRoom": {
                 "password": password,
@@ -222,7 +222,7 @@ class SyncServerProtocol(JSONCommandProtocol):
             }
         })
 
-    def sendControlledRoomAuthStatus(self, success, username, roomname):
+    def sendControlledRoomAuthStatus(self, success, username: str, roomname) -> None:
         self.sendSet({
             "controllerAuth": {
                 "user": username,
@@ -231,7 +231,7 @@ class SyncServerProtocol(JSONCommandProtocol):
             }
         })
 
-    def sendSetReady(self, username, isReady, manuallyInitiated=True):
+    def sendSetReady(self, username: str, isReady, manuallyInitiated: bool = True) -> None:
         self.sendSet({
             "ready": {
                 "username": username,
@@ -240,7 +240,7 @@ class SyncServerProtocol(JSONCommandProtocol):
             }
         })
 
-    def setPlaylist(self, username, files):
+    def setPlaylist(self, username: str, files) -> None:
         self.sendSet({
             "playlistChange": {
                 "user": username,
@@ -248,7 +248,7 @@ class SyncServerProtocol(JSONCommandProtocol):
             }
         })
 
-    def setPlaylistIndex(self, username, index):
+    def setPlaylistIndex(self, username: str, index) -> None:
         self.sendSet({
             "playlistIndex": {
                 "user": username,
@@ -256,7 +256,7 @@ class SyncServerProtocol(JSONCommandProtocol):
             }
         })
 
-    def sendUserSetting(self, username, room, file_, event):
+    def sendUserSetting(self, username: str, room, file_, event) -> None:
         room = {"name": room.name}
         user = {username: {}}
         user[username]["room"] = room
@@ -266,7 +266,7 @@ class SyncServerProtocol(JSONCommandProtocol):
             user[username]["event"] = event
         self.sendSet({"user": user})
 
-    def _addUserOnList(self, userlist, watcher):
+    def _addUserOnList(self, userlist, watcher) -> None:
         room = watcher.room
         if room:
             if room.name not in userlist:
@@ -280,7 +280,7 @@ class SyncServerProtocol(JSONCommandProtocol):
             }
             userlist[room.name][watcher.name] = userFile
 
-    def sendList(self):
+    def sendList(self) -> None:
         userlist = {}
         watchers = self._factory.getAllWatchersForUser(self._watcher)
         for watcher in watchers:
@@ -288,10 +288,10 @@ class SyncServerProtocol(JSONCommandProtocol):
         self.sendMessage({"List": userlist})
 
     @requireLogged
-    def handleList(self, _):
+    def handleList(self, _) -> None:
         self.sendList()
 
-    def sendState(self, position, paused, doSeek, setBy, forced=False):
+    def sendState(self, position, paused, doSeek, setBy, forced: bool = False) -> None:
         processingTime = 0
         if self._clientLatencyCalculationArrivalTime:
             processingTime = time.time() - self._clientLatencyCalculationArrivalTime
@@ -331,7 +331,7 @@ class SyncServerProtocol(JSONCommandProtocol):
         return position, paused, doSeek
 
     @requireLogged
-    def handleState(self, state):
+    def handleState(self, state) -> None:
         position, paused, doSeek, latencyCalculation = None, None, None, None
         if "ignoringOnTheFly" in state:
             ignore = state["ignoringOnTheFly"]
@@ -351,16 +351,16 @@ class SyncServerProtocol(JSONCommandProtocol):
         if self.serverIgnoringOnTheFly == 0:
             self._watcher.updateState(position, paused, doSeek, self._pingService.getLastForwardDelay())
 
-    def handleError(self, error):
+    def handleError(self, error) -> None:
         self.dropWithError(error["message"])  # TODO: more processing and fallbacking
 
-    def sendError(self, message):
+    def sendError(self, message) -> None:
         self.sendMessage({"Error": {"message": message}})
 
-    def sendTLS(self, message):
+    def sendTLS(self, message) -> None:
         self.sendMessage({"TLS": message})
 
-    def handleTLS(self, message):
+    def handleTLS(self, message) -> None:
         inquiry = message.get("startTLS")
         if "send" in inquiry:
             if not self.isLogged() and self._factory.serverAcceptsTLS:
@@ -385,7 +385,7 @@ class PingService(object):
     def newTimestamp(self):
         return time.time()
 
-    def receiveMessage(self, timestamp, senderRtt):
+    def receiveMessage(self, timestamp, senderRtt) -> None:
         if not timestamp:
             return
         self._rtt = time.time() - timestamp

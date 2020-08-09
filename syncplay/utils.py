@@ -7,9 +7,6 @@ import time
 from syncplay import constants
 from syncplay.messages import getMessage
 
-folderSearchEnabled = True
-
-
 def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
     """Retry calling the decorated function using an exponential backoff.
 
@@ -37,7 +34,6 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
                 try:
                     # try_one_last_time = False
                     return f(*args, **kwargs)
-                    break
                 except ExceptionToCheck as e:
                     if logger:
                         msg = getMessage("retrying-notification").format(str(e), mdelay)
@@ -102,7 +98,7 @@ class RoomPasswordProvider(object):
 
     @staticmethod
     def getControlledRoomName(roomName, password, salt):
-        return "+" + roomName + ":" + RoomPasswordProvider._computeRoomHash(roomName, password, salt)
+        return f"+{roomName}:" + RoomPasswordProvider._computeRoomHash(roomName, password, salt)
 
     @staticmethod
     def _computeRoomHash(roomName, password, salt):
