@@ -1,7 +1,7 @@
 # coding:utf8
 import logging
 
-from syncplay import constants
+from .. import constants
 
 from . import messages_en
 from . import messages_ru
