@@ -1,4 +1,5 @@
 import sys
+import logging
 
 from twisted.internet import reactor
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP6ServerEndpoint
@@ -16,16 +17,16 @@ def isListening4(f):
 
 def failed6(f):
     ServerStatus.listening6 = False
-    print(f.value)
-    print("IPv6 listening failed.")
+    logging.debug(f.value)
+    logging.error("IPv6 listening failed.")
 
 def failed4(f):
     ServerStatus.listening4 = False
     if f.type is CannotListenError and ServerStatus.listening6:
         pass
     else:
-        print(f.value)
-        print("IPv4 listening failed.")
+        logging.debug(f.value)
+        logging.error("IPv4 listening failed.")
 
 def main():
     argsGetter = ConfigurationGetter()
@@ -50,7 +51,7 @@ def main():
     if ServerStatus.listening6 or ServerStatus.listening4:
         reactor.run()
     else:
-        print("Unable to listen using either IPv4 and IPv6 protocols. Quitting the server now.")
+        logging.error("Unable to listen using either IPv4 and IPv6 protocols. Quitting the server now.")
         sys.exit()
 
 if __name__ == "__main__":

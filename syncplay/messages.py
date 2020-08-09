@@ -86,6 +86,6 @@ def getMessage(type_, locale=None):
     if type_ in messages["en"]:
         return str(messages["en"][type_])
     else:
-        print(f"WARNING: Cannot find message '{type_}'!")
+        logging.warning(f"Cannot find message '{type_}'!")
         #return "!{}".format(type_)  # TODO: Remove
         raise KeyError(type_)

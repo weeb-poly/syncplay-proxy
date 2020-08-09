@@ -64,53 +64,7 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
     return deco_retry
 
 
-def parseTime(timeStr):
-    regex = re.compile(constants.PARSE_TIME_REGEX)
-    parts = regex.match(timeStr)
-    if not parts:
-        return
-    parts = parts.groupdict()
-    time_params = {}
-    for name, param in parts.items():
-        if param:
-            if name == "miliseconds":
-                time_params["microseconds"] = int(param) * 1000
-            else:
-                time_params[name] = int(param)
-    return datetime.timedelta(**time_params).total_seconds()
-
-
-def formatTime(timeInSeconds, weeksAsTitles=True) -> str:
-    if timeInSeconds < 0:
-        timeInSeconds = -timeInSeconds
-        sign = '-'
-    else:
-        sign = ''
-    timeInSeconds = round(timeInSeconds)
-    weeks = timeInSeconds // 604800
-    if weeksAsTitles and weeks > 0:
-        title = weeks
-        weeks = 0
-    else:
-        title = 0
-    days = (timeInSeconds % 604800) // 86400
-    hours = (timeInSeconds % 86400) // 3600
-    minutes = (timeInSeconds % 3600) // 60
-    seconds = timeInSeconds % 60
-    if weeks > 0:
-        formattedTime = '{0:}{1:.0f}w, {2:.0f}d, {3:02.0f}:{4:02.0f}:{5:02.0f}'.format(sign, weeks, days, hours, minutes, seconds)
-    elif days > 0:
-        formattedTime = '{0:}{1:.0f}d, {2:02.0f}:{3:02.0f}:{4:02.0f}'.format(sign, days, hours, minutes, seconds)
-    elif hours > 0:
-        formattedTime = '{0:}{1:02.0f}:{2:02.0f}:{3:02.0f}'.format(sign, hours, minutes, seconds)
-    else:
-        formattedTime = '{0:}{1:02.0f}:{2:02.0f}'.format(sign, minutes, seconds)
-    if title > 0:
-        formattedTime = "{0:} (Title {1:.0f})".format(formattedTime, title)
-    return formattedTime
-
-
-def formatSize(numOfBytes, precise=False):
+def formatSize(numOfBytes, precise=False) -> str:
     if numOfBytes == 0:  # E.g. when file size privacy is enabled
         return "???"
     try:
@@ -124,86 +78,27 @@ def formatSize(numOfBytes, precise=False):
         return "???"
 
 
-def isASCII(s):
+def isASCII(s) -> bool:
     return all(ord(c) < 128 for c in s)
-
-
-def getDefaultMonospaceFont():
-    return constants.MONOSPACE_FONT
 
 
 def limitedPowerset(s, minLength):
     return itertools.chain.from_iterable(itertools.combinations(s, r) for r in range(len(s), minLength, -1))
 
 
-def blackholeStdoutForFrozenWindow():
-    if getattr(sys, 'frozen', '') == "windows_exe":
-        class Stderr(object):
-            softspace = 0
-            _file = None
-            _error = None
-
-            def write(self, text, fname='.syncplay.log'):
-                if self._file is None and self._error is None:
-                    if os.name != 'nt':
-                        path = os.path.join(os.getenv('HOME', '.'), fname)
-                    else:
-                        path = os.path.join(os.getenv('APPDATA', '.'), fname)
-                    self._file = open(path, 'a')
-                    # TODO: Handle errors.
-                if self._file is not None:
-                    self._file.write(text)
-                    self._file.flush()
-
-            def flush(self):
-                if self._file is not None:
-                    self._file.flush()
-
-        sys.stderr = Stderr()
-        del Stderr
-
-        class Blackhole(object):
-            softspace = 0
-
-            def write(self, text):
-                pass
-
-            def flush(self):
-                pass
-
-        sys.stdout = Blackhole()
-        del Blackhole
-
-
-def truncateText(unicodeText, maxLength):
+def truncateText(unicodeText, maxLength) -> str:
     try:
         unicodeText = unicodeText.decode('utf-8')
     except:
         pass
     try:
-        return(str(unicodeText.encode("utf-8"), "utf-8", errors="ignore")[:maxLength])
+        return str(unicodeText.encode("utf-8"), "utf-8", errors="ignore")[:maxLength]
     except:
         pass
     return ""
 
 
-def splitText(unicodeText, maxLength):
-    try:
-        unicodeText = unicodeText.decode('utf-8')
-    except:
-        pass
-    try:
-        unicodeText = str(unicodeText.encode("utf-8"), "utf-8", errors="ignore")
-        unicodeArray = [unicodeText[i:i + maxLength] for i in range(0, len(unicodeText), maxLength)]
-        return unicodeArray
-    except:
-        pass
-    return [""]
-
-# Relate to file hashing / difference checking:
-
-
-def stripfilename(filename, stripURL):
+def stripfilename(filename, stripURL) -> str:
     if filename:
         try:
             filename = filename
@@ -220,7 +115,7 @@ def stripfilename(filename, stripURL):
         return ""
 
 
-def stripRoomName(RoomName):
+def stripRoomName(RoomName) -> str:
     if RoomName:
         try:
             return re.sub(constants.ROOM_NAME_STRIP_REGEX, "\g<roomnamebase>", RoomName)
@@ -230,7 +125,7 @@ def stripRoomName(RoomName):
         return ""
 
 
-def hashFilename(filename, stripURL=False):
+def hashFilename(filename, stripURL=False) -> str:
     if isURL(filename):
         stripURL = True
     strippedFilename = stripfilename(filename, stripURL)
@@ -298,7 +193,7 @@ def sameFileduration(duration1, duration2) -> bool:
         return False
 
 
-def meetsMinVersion(version, minVersion):
+def meetsMinVersion(version, minVersion) -> bool:
     def versiontotuple(ver):
         return tuple(map(int, ver.split(".")))
     return versiontotuple(version) >= versiontotuple(minVersion)
@@ -313,26 +208,6 @@ def isURL(path) -> bool:
         return False
 
 
-def getPlayerArgumentsByPathAsArray(arguments, path):
-    if arguments and not isinstance(arguments, str) and path in arguments:
-        return arguments[path]
-    else:
-        return None
-
-
-def getPlayerArgumentsByPathAsText(arguments, path):
-    argsToReturn = getPlayerArgumentsByPathAsArray(arguments, path)
-    return " ".join(argsToReturn) if argsToReturn else ""
-
-
-def getListAsMultilineString(pathArray):
-    return "\n".join(pathArray) if pathArray else ""
-
-
-def convertMultilineStringToList(multilineString):
-    return str.split(multilineString, "\n") if multilineString else ""
-
-
 def playlistIsValid(files) -> bool:
     if len(files) > constants.PLAYLIST_MAX_ITEMS:
         return False
@@ -341,65 +216,16 @@ def playlistIsValid(files) -> bool:
     return True
 
 
-def getDomainFromURL(URL):
-    try:
-        URL = URL.split("//")[-1].split("/")[0]
-        if URL.startswith("www."):
-            URL = URL[4:]
-        return URL
-    except:
-        return None
-
-
-def open_system_file_browser(path):
-    if isURL(path):
-        return
-    path = os.path.dirname(path)
-    if platform.system() == "Windows":
-        os.startfile(path)
-    elif platform.system() == "Darwin":
-        subprocess.Popen(["open", path])
-    else:
-        subprocess.Popen(["xdg-open", path])
-
-
-def getListOfPublicServers():
-    try:
-        import urllib.request, urllib.parse, urllib.error, syncplay, sys
-        params = urllib.parse.urlencode({'version': syncplay.version, 'milestone': syncplay.milestone, 'release_number': syncplay.release_number, 'language': syncplay.messages.messages["CURRENT"]})
-        if isMacOS():
-            import requests
-            response = requests.get(constants.SYNCPLAY_PUBLIC_SERVER_LIST_URL.format(params))
-            response = response.text
-        else:
-            f = urllib.request.urlopen(constants.SYNCPLAY_PUBLIC_SERVER_LIST_URL.format(params))
-            response = f.read()
-            response = response.decode('utf-8')
-        response = response.replace("<p>", "").replace("</p>", "").replace("<br />", "").replace("&#8220;", "'").replace("&#8221;", "'").replace(":&#8217;", "'").replace("&#8217;", "'").replace("&#8242;", "'").replace("\n", "").replace("\r", "")  # Fix Wordpress
-        response = ast.literal_eval(response)
-
-        if response:
-            return response
-        else:
-            raise IOError
-    except:
-        if constants.DEBUG_MODE == True:
-            traceback.print_exc()
-            raise
-        else:
-            raise IOError(getMessage("failed-to-load-server-list-error"))
-
-
 class RoomPasswordProvider(object):
     CONTROLLED_ROOM_REGEX = re.compile("^\+(.*):(\w{12})$")
     PASSWORD_REGEX = re.compile("[A-Z]{2}-\d{3}-\d{3}")
 
     @staticmethod
-    def isControlledRoom(roomName):
+    def isControlledRoom(roomName) -> bool:
         return bool(re.match(RoomPasswordProvider.CONTROLLED_ROOM_REGEX, roomName))
 
     @staticmethod
-    def check(roomName, password, salt):
+    def check(roomName, password, salt) -> bool:
         if not password or not re.match(RoomPasswordProvider.PASSWORD_REGEX, password):
             raise ValueError()
 
@@ -445,11 +271,11 @@ class RandomStringGenerator(object):
 
     @staticmethod
     def _get_random_letters(quantity):
-        return ''.join(random.choice(string.ascii_uppercase) for _ in range(quantity))
+        return ''.join(random.choices(string.ascii_uppercase, k=quantity))
 
     @staticmethod
     def _get_random_numbers(quantity):
-        return ''.join(random.choice(string.digits) for _ in range(quantity))
+        return ''.join(random.choice(string.digits, k=quantity))
 
 
 class NotControlledRoom(Exception):

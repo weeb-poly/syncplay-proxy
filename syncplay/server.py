@@ -5,6 +5,7 @@ import os
 import random
 import time
 from string import Template
+import logging
 
 from twisted.enterprise import adbapi
 from twisted.internet import task, reactor
@@ -29,7 +30,7 @@ class SyncFactory(Factory):
                  disableReady=False, disableChat=False, maxChatMessageLength=constants.MAX_CHAT_MESSAGE_LENGTH,
                  maxUsernameLength=constants.MAX_USERNAME_LENGTH, statsDbFile=None, tlsCertPath=None):
         self.isolateRooms = isolateRooms
-        print(getMessage("welcome-server-notification").format(syncplay.version))
+        logging.info(getMessage("welcome-server-notification").format(syncplay.version))
         self.port = port
         if password:
             password = password.encode('utf-8')
@@ -37,7 +38,7 @@ class SyncFactory(Factory):
         self.password = password
         if salt is None:
             salt = RandomStringGenerator.generate_server_salt()
-            print(getMessage("no-salt-notification").format(salt))
+            logging.warning(getMessage("no-salt-notification").format(salt))
         self._salt = salt
         self._motdFilePath = motdFilePath
         self.disableReady = disableReady
@@ -238,14 +239,13 @@ class SyncFactory(Factory):
             self.options = contextFactory
             self.serverAcceptsTLS = True
             self._TLSattempts = 0
-            print("TLS support is enabled.")
+            logging.info("TLS support is enabled.")
         except Exception as e:
             self.options = None
             self.serverAcceptsTLS = False
             self.lastEditCertTime = None
-            print("Error while loading the TLS certificates.")
-            print(e)
-            print("TLS support is not enabled.")
+            logging.exception("Error while loading the TLS certificates.")
+            logging.info("TLS support is not enabled.")
 
     def checkLastEditCertTime(self):
         try:

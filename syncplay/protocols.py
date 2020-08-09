@@ -18,24 +18,23 @@ from syncplay.utils import meetsMinVersion
 
 class JSONCommandProtocol(LineReceiver):
     def handleMessages(self, messages):
-        for message in messages.items():
-            command = message[0]
+        for command, message in messages.items():
             if command == "Hello":
-                self.handleHello(message[1])
+                self.handleHello(message)
             elif command == "Set":
-                self.handleSet(message[1])
+                self.handleSet(message)
             elif command == "List":
-                self.handleList(message[1])
+                self.handleList(message)
             elif command == "State":
-                self.handleState(message[1])
+                self.handleState(message)
             elif command == "Error":
-                self.handleError(message[1])
+                self.handleError(message)
             elif command == "Chat":
-                self.handleChat(message[1])
+                self.handleChat(message)
             elif command == "TLS":
-                self.handleTLS(message[1])
+                self.handleTLS(message)
             else:
-                self.dropWithError(getMessage("unknown-command-server-error").format(message[1]))  # TODO: log, not drop
+                self.dropWithError(getMessage("unknown-command-server-error").format(message))  # TODO: log, not drop
 
     def lineReceived(self, line):
         try:
@@ -97,7 +96,7 @@ class SyncServerProtocol(JSONCommandProtocol):
         pass
 
     def dropWithError(self, error):
-        print(getMessage("client-drop-server-error").format(self.transport.getPeer().host, error))
+        logging.error(getMessage("client-drop-server-error").format(self.transport.getPeer().host, error))
         self.sendError(error)
         self.drop()
 
@@ -194,26 +193,26 @@ class SyncServerProtocol(JSONCommandProtocol):
 
     @requireLogged
     def handleSet(self, settings):
-        for command, val in settings.items():
+        for command, setting in settings.items():
             if command == "room":
-                roomName = val.get("name")
+                roomName = setting.get("name")
                 self._factory.setWatcherRoom(self._watcher, roomName)
             elif command == "file":
-                self._watcher.setFile(val)
+                self._watcher.setFile(setting)
             elif command == "controllerAuth":
-                password = val.get("password")
-                room = val.get("room")
+                password = setting.get("password")
+                room = setting.get("room")
                 self._factory.authRoomController(self._watcher, password, room)
             elif command == "ready":
-                manuallyInitiated = val.get('manuallyInitiated', False)
-                self._factory.setReady(self._watcher, val['isReady'], manuallyInitiated=manuallyInitiated)
+                manuallyInitiated = setting.get('manuallyInitiated', False)
+                self._factory.setReady(self._watcher, setting['isReady'], manuallyInitiated=manuallyInitiated)
             elif command == "playlistChange":
-                self._factory.setPlaylist(self._watcher, val['files'])
+                self._factory.setPlaylist(self._watcher, setting['files'])
             elif command == "playlistIndex":
-                self._factory.setPlaylistIndex(self._watcher, val['index'])
+                self._factory.setPlaylistIndex(self._watcher, setting['index'])
             elif command == "features":
                 # TODO: Check
-                self._watcher.setFeatures(val)
+                self._watcher.setFeatures(setting)
 
     def sendSet(self, setting):
         self.sendMessage({"Set": setting})
@@ -296,10 +295,9 @@ class SyncServerProtocol(JSONCommandProtocol):
         self.sendList()
 
     def sendState(self, position, paused, doSeek, setBy, forced=False):
+        processingTime = 0
         if self._clientLatencyCalculationArrivalTime:
             processingTime = time.time() - self._clientLatencyCalculationArrivalTime
-        else:
-            processingTime = 0
         playstate = {
             "position": position if position else 0,
             "paused": paused,
