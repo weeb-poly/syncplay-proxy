@@ -8,6 +8,6 @@ services:
       SYNCPLAY_PASSWORD: "${SYNCPLAY_PASSWORD}"
       SYNCPLAY_SALT: "${SYNCPLAY_SALT}"
       SYNCPLAY_PORT: "${SYNCPLAY_PORT}"
-      SYNCPLAY_TLS_DIR : "/app/cert"
+      SYNCPLAY_TLS_PATH : "/app/cert"
     volumes:
-      - ${SYNCPLAY_TLS_DIR}:/app/cert
+      - ${SYNCPLAY_TLS_PATH}:/app/cert:ro
