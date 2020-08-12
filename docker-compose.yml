@@ -10,4 +10,6 @@ services:
       SYNCPLAY_PORT: "${SYNCPLAY_PORT}"
       SYNCPLAY_TLS_PATH : "/app/cert"
     volumes:
-      - ${SYNCPLAY_TLS_PATH}:/app/cert:ro
+      - ${SYNCPLAY_TLS_PATH}/privkey.pem:/app/cert/privkey.pem:ro
+      - ${SYNCPLAY_TLS_PATH}/cert.pem:/app/cert/cert.pem:ro
+      - ${SYNCPLAY_TLS_PATH}/chain.pem:/app/cert/chain.pem:ro
