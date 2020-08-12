@@ -17,4 +17,7 @@ Twisted = {extras = ["tls"], version = ">=16.4.0"}
 python_version = "3.6"
 
 [scripts]
-server = "sudo ./syncplayServer.py --password $SYNCPLAY_PASSWORD --salt $SYNCPLAY_SALT --port $SYNCPLAY_PORT --tls $SYNCPLAY_TLS_DIR"
+srv = "sudo ./syncplayServer.py --password $SYNCPLAY_PASSWORD --salt $SYNCPLAY_SALT --port $SYNCPLAY_PORT --tls $SYNCPLAY_TLS_PATH"
+build = "docker-compose build"
+deploy = "docker-compose up"
+prod = "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --remove-orphans"

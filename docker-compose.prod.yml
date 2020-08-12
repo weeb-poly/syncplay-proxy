@@ -1,0 +1,7 @@
+version: '3.7'
+
+services:
+  app:
+    network_mode: "bridge"
+    extra_hosts:
+      - "db:172.17.0.1"

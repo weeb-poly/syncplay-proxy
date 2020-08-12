@@ -355,7 +355,8 @@ class SyncServerProtocol(JSONCommandProtocol):
             self._watcher.updateState(position, paused, doSeek, self._pingService.getLastForwardDelay())
 
     def handleError(self, error) -> None:
-        self.dropWithError(error["message"])  # TODO: more processing and fallbacking
+        # TODO: more processing and fallbacking
+        self.dropWithError(error["message"])
 
     def sendError(self, message) -> None:
         self.sendMessage({"Error": {"message": message}})
@@ -379,7 +380,7 @@ class SyncServerProtocol(JSONCommandProtocol):
                 self.sendTLS({"startTLS": "false"})
 
 
-class PingService(object):
+class PingService:
     def __init__(self):
         self._rtt = 0
         self._fd = 0

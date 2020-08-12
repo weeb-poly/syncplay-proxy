@@ -1,0 +1,13 @@
+version: '3.7'
+
+services:
+  app:
+    build: .
+    image: tcyrus/syncplay-srv
+    environment:
+      SYNCPLAY_PASSWORD: "${SYNCPLAY_PASSWORD}"
+      SYNCPLAY_SALT: "${SYNCPLAY_SALT}"
+      SYNCPLAY_PORT: "${SYNCPLAY_PORT}"
+      SYNCPLAY_TLS_DIR : "/app/cert"
+    volumes:
+      - ${SYNCPLAY_TLS_DIR}:/app/cert
