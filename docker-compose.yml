@@ -3,7 +3,7 @@ version: '3.7'
 services:
   app:
     build: .
-    image: tcyrus/syncplay-srv
+    image: weeb-poly/syncplay-srv
     environment:
       SYNCPLAY_PASSWORD: "${SYNCPLAY_PASSWORD}"
       SYNCPLAY_SALT: "${SYNCPLAY_SALT}"
