@@ -3,5 +3,11 @@ version: '3.7'
 services:
   app:
     network_mode: "bridge"
+    environment:
+      SYNCPLAY_TLS_PATH : "/app/cert"
+    volumes:
+      - ${SYNCPLAY_TLS_PATH}/privkey.pem:/app/cert/privkey.pem:ro
+      - ${SYNCPLAY_TLS_PATH}/cert.pem:/app/cert/cert.pem:ro
+      - ${SYNCPLAY_TLS_PATH}/chain.pem:/app/cert/chain.pem:ro
     extra_hosts:
       - "db:172.17.0.1"
