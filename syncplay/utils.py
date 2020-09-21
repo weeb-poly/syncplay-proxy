@@ -126,10 +126,7 @@ class RandomStringGenerator:
 
     @staticmethod
     def generate_server_salt() -> str:
-        parts = (
-            RandomStringGenerator._get_random_letters(10),
-        )
-        return "{}".format(*parts)
+        return RandomStringGenerator._get_random_letters(10)
 
     @staticmethod
     def _get_random_letters(quantity: int) -> str:
