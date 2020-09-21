@@ -3,9 +3,6 @@ name = "pypi"
 url = "https://pypi.org/simple"
 verify_ssl = true
 
-[dev-packages]
-vulture = "*"
-
 [packages]
 certifi = "*"
 appnope = {version = ">=0.1.0", sys_platform = "== 'darwin'"}
@@ -18,7 +15,6 @@ Twisted = {extras = ["tls"], version = ">=16.4.0"}
 python_version = "3.6"
 
 [scripts]
-srv = "sudo ./syncplayServer.py --password $SYNCPLAY_PASSWORD --salt $SYNCPLAY_SALT --port $SYNCPLAY_PORT --tls $SYNCPLAY_TLS_PATH"
 build = "docker-compose build"
 deploy = "docker-compose up"
 prod = "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --remove-orphans"

@@ -3,10 +3,9 @@ version: '3.7'
 services:
   app:
     build: .
-    image: weeb-poly/syncplay-srv
+    image: weeb-poly/syncplay-proxy
     environment:
-      SYNCPLAY_PASSWORD: "${SYNCPLAY_PASSWORD}"
-      SYNCPLAY_SALT: "${SYNCPLAY_SALT}"
+      SYNCPLAY_HOST: "${SYNCPLAY_HOST}"
       SYNCPLAY_PORT: "${SYNCPLAY_PORT}" 
     ports:
       - "${SYNCPLAY_PORT}:${SYNCPLAY_PORT}"
