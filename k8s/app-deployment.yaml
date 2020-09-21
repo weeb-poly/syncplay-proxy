@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: syncplay-srv
+  labels:
+    app: syncplay-srv
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: syncplay-srv
+  template:
+    metadata:
+      labels:
+        app: syncplay-srv
+    spec:
+      containers:
+      - name: syncplay-srv
+        image: weeb-poly/syncplay-srv
+        env:
+        - name: SYNCPLAY_PORT
+          value: "8995"
+        - name: SYNCPLAY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: syncplay
+              key: password
+        - name: SYNCPLAY_SALT
+          valueFrom:
+            secretKeyRef:
+              name: syncplay
+              key: salt
+        ports:
+        - containerPort: 8995
+      restartPolicy: Always
