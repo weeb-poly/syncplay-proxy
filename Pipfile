@@ -5,17 +5,19 @@ verify_ssl = true
 
 [packages]
 certifi = "*"
-appnope = {version = ">=0.1.0", sys_platform = "== 'darwin'"}
-pypiwin32 = {version = ">=223", sys_platform = "== 'win32'"}
-#"zope.interface" = {version = ">=4.4.0", sys_platform = "== 'win32'"}
-"zope.interface" = {version = ">=4.4.0"}
-Twisted = {extras = ["tls"], version = ">=16.4.0"}
+"zope.interface" = "*"
+Twisted = {extras = ["tls"], version = ">=20.3.0"}
+pem = "*"
+autobahn = {extras = ["twisted"], version = "*"}
 
 [requires]
-python_version = "3.6"
+python_version = "3.8"
 
 [scripts]
-build = "docker-compose build"
-deploy = "docker-compose up"
-prod = "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --remove-orphans"
-prod-debug = "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build --remove-orphans"
+server = "python -m syncplay"
+shiv-build = "./extras/shiv.sh"
+shiv-run = "./syncplay.pyz"
+podman-prod = "sudo -E ./extras/podman.sh"
+
+[dev-packages]
+shiv = "*"

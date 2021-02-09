@@ -6,12 +6,12 @@ import time
 from string import Template
 import logging
 
-from twisted.enterprise import adbapi
+import pem
+
 from twisted.internet import task, reactor
-from twisted.internet.protocol import Factory
+from twisted.internet.protocol import ServerFactory
 
 try:
-    from OpenSSL import crypto
     from OpenSSL.SSL import TLSv1_2_METHOD
     from twisted.internet import ssl
 except:
@@ -19,18 +19,36 @@ except:
 
 import syncplay
 from syncplay import constants
-from syncplay.protocols import SyncProxyServerProtocol
+from syncplay.protocols import SyncplayTCPServerProtocol
+from syncplay.protocols import SyncplayWSServerProtocol
+
+from autobahn.twisted.websocket import WebSocketServerFactory
 
 
-class SyncProxyFactory(Factory):
+class SyncplayProxyWSFactory(WebSocketServerFactory):
     port: str
+    host: str
+
+    def __init__(self, port: str = '', host: str = ''):
+        self.port = port
+
+        host_name, host_port = host.split(":", 1)
+        self.host_name = host_name
+        self.host_port = int(host_port)
+
+    def buildProtocol(self, _addr):
+        return SyncplayWSServerProtocol(self)
+
+
+class SyncplayProxyTCPFactory(ServerFactory):
+    port: int
     host: str
     tlscertPath: str
     serverAcceptsTLS: bool
     _TLSattempts: int
 
     def __init__(self, port: str = '', host: str = '', tlsCertPath = None):
-        self.port = port
+        self.port = int(port)
 
         host_name, host_port = host.split(":", 1)
         self.host_name = host_name
@@ -44,20 +62,15 @@ class SyncProxyFactory(Factory):
         else:
             self.options = None
 
-    def buildProtocol(self, addr):
-        return SyncProxyServerProtocol(self)
+    def buildProtocol(self, _addr):
+        return SyncplayTCPServerProtocol(self)
 
     def _allowTLSconnections(self, path: str) -> None:
         try:
-            privKey = open(path+'/privkey.pem', 'rt').read()
-            certif = open(path+'/cert.pem', 'rt').read()
-            chain = open(path+'/chain.pem', 'rt').read()
+            privKeyPath = path+'/privkey.pem'
+            chainPath = path+'/fullchain.pem'
 
-            self.lastEditCertTime = os.path.getmtime(path+'/cert.pem')
-
-            privKeyPySSL = crypto.load_privatekey(crypto.FILETYPE_PEM, privKey)
-            certifPySSL = crypto.load_certificate(crypto.FILETYPE_PEM, certif)
-            chainPySSL = [crypto.load_certificate(crypto.FILETYPE_PEM, chain)]
+            self.lastEditCertTime = os.path.getmtime(chainPath)
 
             cipherListString = "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:"\
                                "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:"\
@@ -65,13 +78,19 @@ class SyncProxyFactory(Factory):
             accCiphers = ssl.AcceptableCiphers.fromOpenSSLCipherString(cipherListString)
 
             try:
-                contextFactory = ssl.CertificateOptions(privateKey=privKeyPySSL, certificate=certifPySSL,
-                                                        extraCertChain=chainPySSL, acceptableCiphers=accCiphers,
-                                                        raiseMinimumTo=ssl.TLSVersion.TLSv1_2)
+                contextFactory = pem.twisted.certificateOptionsFromFiles(
+                    privKeyPath,
+                    chainPath,
+                    acceptableCiphers=accCiphers,
+                    raiseMinimumTo=ssl.TLSVersion.TLSv1_2
+                )
             except AttributeError:
-                contextFactory = ssl.CertificateOptions(privateKey=privKeyPySSL, certificate=certifPySSL,
-                                                        extraCertChain=chainPySSL, acceptableCiphers=accCiphers,
-                                                        method=TLSv1_2_METHOD)
+                contextFactory = pem.twisted.certificateOptionsFromFiles(
+                    privKeyPath,
+                    chainPath,
+                    acceptableCiphers=accCiphers,
+                    method=TLSv1_2_METHOD
+                )
 
             self.options = contextFactory
             self.serverAcceptsTLS = True
@@ -86,7 +105,7 @@ class SyncProxyFactory(Factory):
 
     def checkLastEditCertTime(self):
         try:
-            outTime = os.path.getmtime(self.certPath+'/cert.pem')
+            outTime = os.path.getmtime(self.certPath+'/fullchain.pem')
         except:
             outTime = None
         return outTime
