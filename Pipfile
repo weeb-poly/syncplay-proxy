@@ -17,7 +17,9 @@ python_version = "3.8"
 server = "python -m syncplay"
 shiv-build = "./extras/shiv.sh"
 shiv-run = "./syncplay.pyz"
-podman-prod = "sudo -E ./extras/podman.sh"
+podman-build = "sudo -E ./extras/podman-build.sh"
+podman-push = "./extras/podman-push.sh"
+k8s-deploy = "sudo -E ./extras/k8s-deploy.sh"
 
 [dev-packages]
 shiv = "*"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-IMG_NAME="syncplay-server"
-IMG_TAG="ghcr.io/weeb-poly/syncplay-server"
+IMG_NAME="syncplay-proxy"
+IMG_TAG="ghcr.io/weeb-poly/syncplay-proxy"
 
 # Copy Image from root to current user
 sudo podman save "${IMG_NAME}" | podman load
@@ -17,4 +17,4 @@ podman rmi "${IMG_NAME}"
 podman push "${IMG_TAG}"
 
 # Delete Image from User
-podman rmi "${IMG_TAG}"
+# podman rmi "${IMG_TAG}"
