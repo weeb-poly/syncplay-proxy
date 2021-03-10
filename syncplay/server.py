@@ -1,26 +1,16 @@
-import argparse
-import codecs
-import hashlib
 import os
-import time
-from string import Template
 import logging
 
 import pem
 
-from twisted.internet import task, reactor
 from twisted.internet.protocol import ServerFactory
 
-try:
-    from OpenSSL.SSL import TLSv1_2_METHOD
-    from twisted.internet import ssl
-except:
-    pass
+from OpenSSL import SSL
 
-import syncplay
+from twisted.internet import ssl
+
 from syncplay import constants
-from syncplay.protocols import SyncplayTCPServerProtocol
-from syncplay.protocols import SyncplayWSServerProtocol
+from syncplay.protocols import SyncplayTCPServerProtocol, SyncplayWSServerProtocol
 
 from autobahn.twisted.websocket import WebSocketServerFactory
 
@@ -29,15 +19,37 @@ class SyncplayProxyWSFactory(WebSocketServerFactory):
     port: str
     host: str
 
-    def __init__(self, port: str = '', host: str = ''):
+    def __init__(self, port: str = '', host: str = '', tlsCertPath = None):
         self.port = port
 
         host_name, host_port = host.split(":", 1)
         self.host_name = host_name
         self.host_port = int(host_port)
 
+        self.options = None
+        if tlsCertPath is not None:
+            self._allowSSLconnections(tlsCertPath)
+
     def buildProtocol(self, _addr):
         return SyncplayWSServerProtocol(self)
+
+    def _allowSSLconnections(self, path: str) -> None:
+        try:
+            privKeyPath = path+'/privkey.pem'
+            chainPath = path+'/fullchain.pem'
+
+            contextFactory = pem.twisted.certificateOptionsFromFiles(
+                privKeyPath,
+                chainPath,
+                method=SSl.SSLv23_METHOD
+            )
+
+            self.options = contextFactory
+            logging.info("SSL support is enabled.")
+        except Exception:
+            self.options = None
+            logging.exception("Error while loading the SSL certificates.")
+            logging.info("SSL support is not enabled.")
 
 
 class SyncplayProxyTCPFactory(ServerFactory):
@@ -57,10 +69,9 @@ class SyncplayProxyTCPFactory(ServerFactory):
         self.certPath = tlsCertPath
         self.serverAcceptsTLS = False
         self._TLSattempts = 0
+        self.options = None
         if self.certPath is not None:
             self._allowTLSconnections(self.certPath)
-        else:
-            self.options = None
 
     def buildProtocol(self, _addr):
         return SyncplayTCPServerProtocol(self)
@@ -77,20 +88,12 @@ class SyncplayProxyTCPFactory(ServerFactory):
                                "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384"
             accCiphers = ssl.AcceptableCiphers.fromOpenSSLCipherString(cipherListString)
 
-            try:
-                contextFactory = pem.twisted.certificateOptionsFromFiles(
-                    privKeyPath,
-                    chainPath,
-                    acceptableCiphers=accCiphers,
-                    raiseMinimumTo=ssl.TLSVersion.TLSv1_2
-                )
-            except AttributeError:
-                contextFactory = pem.twisted.certificateOptionsFromFiles(
-                    privKeyPath,
-                    chainPath,
-                    acceptableCiphers=accCiphers,
-                    method=TLSv1_2_METHOD
-                )
+            contextFactory = pem.twisted.certificateOptionsFromFiles(
+                privKeyPath,
+                chainPath,
+                acceptableCiphers=accCiphers,
+                raiseMinimumTo=ssl.TLSVersion.TLSv1_2
+            )
 
             self.options = contextFactory
             self.serverAcceptsTLS = True

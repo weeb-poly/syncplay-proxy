@@ -1,7 +1,7 @@
 import os
 import logging
 
-from twisted.internet.endpoints import TCP4ServerEndpoint, TCP6ServerEndpoint
+from twisted.internet.endpoints import TCP4ServerEndpoint, SSL4ServerEndpoint
 
 from syncplay.server import SyncplayProxyWSFactory
 from syncplay.server import SyncplayProxyTCPFactory
@@ -9,26 +9,31 @@ from syncplay.server import SyncplayProxyTCPFactory
 from twisted.internet import reactor
 
 # from autobahn.twisted.choosereactor import install_reactor
-
 # reactor = install_reactor()
 
 
-def setupFactory(factory, port: int, type: str) -> None:
-    endpoint6 = TCP6ServerEndpoint(reactor, port)
-
-    def failed6(e):
-        logging.debug(e)
-        logging.error(f"IPv6 listening failed ({type}).")
-
-    endpoint6.listen(factory).addErrback(failed6)
+def setupTCPFactory(factory, port: int) -> None:
+    connType = "TCP"
 
     endpoint4 = TCP4ServerEndpoint(reactor, port)
+    setupEndpoint(endpoint4, factory, "IPv4", connType)
 
-    def failed4(e):
-        logging.debug(e)
-        logging.error(f"IPv4 listening failed ({type}).")
 
-    endpoint4.listen(factory).addErrback(failed4)
+def setupWSFactory(factory, port: int) -> None:
+    connType = "WS"
+
+    if factory.options is not None:
+        endpoint4 = SSL4ServerEndpoint(reactor, port, factory.options)
+    else:
+        endpoint4 = TCP4ServerEndpoint(reactor, port)
+    setupEndpoint(endpoint4, factory, "IPv4", connType)
+
+
+def setupEndpoint(endpoint, factory, addrType: str, connType: str) -> None:
+    def listenFailed(e):
+        logging.exception(e)
+        logging.exception(f"{addrType} listening failed ({connType}).")
+    endpoint.listen(factory).addErrback(listenFailed)
 
 
 def main():
@@ -43,14 +48,15 @@ def main():
             host,
             tls
         )
-        setupFactory(tcp_factory, int(tcport), "TCP")
+        setupTCPFactory(tcp_factory, int(tcport))
 
     if wsport is not None:
         ws_factory = SyncplayProxyWSFactory(
             wsport,
-            host
+            host,
+            tls
         )
-        setupFactory(ws_factory, int(wsport), "WS")
+        setupWSFactory(ws_factory, int(wsport))
 
     reactor.run()
 

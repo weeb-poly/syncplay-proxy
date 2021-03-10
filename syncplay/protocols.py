@@ -1,6 +1,4 @@
 import json
-import time
-from functools import wraps
 import logging
 
 from twisted.protocols.basic import LineReceiver
@@ -99,7 +97,7 @@ class WSJSONCommandProtocol(WebSocketServerProtocol):
 
     def sendMsg(self, dict_: dict) -> None:
         line = json.dumps(dict_)
-        self.sendMessage(line.encode('utf-8'), false)
+        self.sendMessage(line.encode('utf-8'), False)
 
     def drop(self) -> None:
         self.transport.loseConnection()
