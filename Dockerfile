@@ -26,7 +26,7 @@ COPY . .
 RUN pipenv run shiv-build
 
 
-FROM docker.io/library/python:3.8
+FROM docker.io/library/python:3.8-slim
 
 LABEL org.opencontainers.image.source https://github.com/weeb-poly/syncplay-proxy
 
